@@ -115,11 +115,6 @@ main() {
   for cmd in python3 git curl; do
     command -v "$cmd" >/dev/null 2>&1 || missing="$missing $cmd"
   done
-  # Ollama ships its Linux builds as .tar.zst. Only needed if step 3 has to
-  # download one; a system ollama on PATH means it never does.
-  if ! command -v ollama >/dev/null 2>&1 && ! command -v zstd >/dev/null 2>&1; then
-    missing="$missing zstd"
-  fi
   if command -v python3 >/dev/null 2>&1; then
     python3 - <<'PY' || missing="$missing python3>=3.10"
 import sys
@@ -130,9 +125,9 @@ PY
     echo "Missing:$missing"
     echo
     echo "Install these, then re-run. Package names vary by distribution:"
-    echo "  Debian/Ubuntu  sudo apt-get install -y python3 python3-venv python3-pip git curl zstd"
-    echo "  Fedora/RHEL    sudo dnf install -y python3 python3-pip git curl zstd"
-    echo "  Arch           sudo pacman -S --needed python python-pip git curl zstd"
+    echo "  Debian/Ubuntu  sudo apt-get install -y python3 python3-venv python3-pip git curl"
+    echo "  Fedora/RHEL    sudo dnf install -y python3 python3-pip git curl"
+    echo "  Arch           sudo pacman -S --needed python python-pip git curl"
     case "$missing" in
       *python3'>='*)
         echo
@@ -162,21 +157,13 @@ PY
       echo "WARNING: neither nvidia-smi nor rocm-smi found. The daemon will run but report no GPU."
   fi
 
-  # Which Ollama build this host can execute. It only matters if step 3 has to
-  # download one, but an architecture with no build is caught here, before any
-  # questions: the alternative is unpacking a binary that fails to execute with
-  # an error naming Ollama rather than this script.
+  # Which Ollama build this host can execute; empty when Ollama publishes
+  # none. Acted on once the install directory is known, below.
   case "$(uname -m)" in
     x86_64|amd64)  OLLAMA_ARCH="amd64" ;;
     aarch64|arm64) OLLAMA_ARCH="arm64" ;;
     *)             OLLAMA_ARCH="" ;;
   esac
-  if [ -z "$OLLAMA_ARCH" ] && ! command -v ollama >/dev/null 2>&1; then
-      echo "Error: no Ollama build is known for this architecture ($(uname -m))."
-      echo "Install Ollama yourself so that 'ollama' is on PATH, then re-run;"
-      echo "the installer skips the download when it finds one."
-      exit 1
-  fi
 
   # ── Where this machine installs ────────────────────────────────────────
   # Deliberately after the prerequisite check: these use hostname/stat/tr, and
@@ -240,6 +227,25 @@ PY
       echo "batches sent to one machine run on the other."
       echo "Give this machine its own directory, e.g.:"
       echo "    INSTANCE=$HOSTTAG bash install.sh"
+      exit 1
+    fi
+  fi
+  # Step 3 downloads Ollama only when there is none on PATH and none already
+  # in this directory, and only a download needs a build for this
+  # architecture and zstd to unpack it. Check here, as soon as the directory
+  # is known and before the remaining questions: the alternative is a binary
+  # that fails to execute with an error naming Ollama, not this script.
+  if ! command -v ollama >/dev/null 2>&1 && [ ! -x "$DAEMON_DIR/bin/ollama" ]; then
+    if [ -z "$OLLAMA_ARCH" ]; then
+      echo "Error: no Ollama build is known for this architecture ($(uname -m))."
+      echo "Install Ollama yourself so that 'ollama' is on PATH, then re-run;"
+      echo "the installer skips the download when it finds one."
+      exit 1
+    fi
+    if ! command -v zstd >/dev/null 2>&1; then
+      echo "Missing: zstd — Ollama's download is a .tar.zst."
+      echo "Install it (the package is 'zstd' on Debian/Ubuntu, Fedora/RHEL and"
+      echo "Arch), or put an existing 'ollama' on PATH, then re-run."
       exit 1
     fi
   fi

@@ -4,7 +4,7 @@
 want it to do useful work rather than sit idle or fail jobs.
 
 The installer sets up Ollama — the build for your CPU architecture, plus its ROCm half when it
-finds an AMD GPU — and otherwise assumes a single GPU. That is the right default for most
+finds an AMD GPU on an x86-64 host — and otherwise assumes a single GPU. That is the right default for most
 machines and the wrong one for several. This page is how to tell which you have.
 
 ---
@@ -18,7 +18,7 @@ machines and the wrong one for several. This page is how to tell which you have.
 | Several GPUs | **Ollama**, and read [Several GPUs](#several-gpus) | Less than you expect — see below |
 | Small GPU, plenty of system RAM | **llama.cpp** | Models far larger than your card, slowly |
 | No GPU, 32 GB RAM or more | **llama.cpp** | Small models on CPU; tens of seconds per prompt |
-| AMD GPU | **Ollama** — the installer fetches the ROCm build | One step needs an admin; see [AMD](#amd-gpus) |
+| AMD GPU | **Ollama** — the installer fetches the ROCm build on x86-64; arm64 gets CPU only | One step needs an admin; see [AMD](#amd-gpus) |
 | Apple Silicon | Not supported by the installer | The installer exits on non-Linux |
 
 ---
